@@ -17,13 +17,13 @@ public class StableNBodySimulation : MonoBehaviour
     [Header("Simulation Settings")]
     public float gravitationalConstant = 1f;
     public float timeStep = 0.001f;
-    public float softening = 0.01f; // evita explosiones cuando r ? 0
+    public float softening = 0.01f; // prevents singularities whe distance is very small
 
     void Start()
     {
         ComputeAccelerations();
 
-        // Si el 0 es el Sol y el 1 es el planeta
+        // Initialize circular orbits (assuming body[0] is the central body (The Sun))
         for (int i = 1; i < bodies.Length; i++)
         {
             SetupCircularOrbit(i, 0);
@@ -39,21 +39,21 @@ public class StableNBodySimulation : MonoBehaviour
     {
         float dt = timeStep;
 
-        // 1?? Actualizar posiciones
+        // Step 1: Update positions using current velocity and acceleration 
         foreach (var body in bodies)
         {
             body.transform.position += body.velocity * dt + 0.5f * body.acceleration * dt * dt;
         }
 
-        // Guardamos aceleraciones anteriores
+        // Sore previous accelerations
         Vector3[] oldAccelerations = new Vector3[bodies.Length];
         for (int i = 0; i < bodies.Length; i++)
             oldAccelerations[i] = bodies[i].acceleration;
 
-        // 2?? Recalcular aceleraciones
+        // Step 2: Recalculate accelerations based on new positions
         ComputeAccelerations();
 
-        // 3?? Actualizar velocidades
+        // Step 3: Update velocities using average acceleration (Verlet integration)
         for (int i = 0; i < bodies.Length; i++)
         {
             bodies[i].velocity += 0.5f * (oldAccelerations[i] + bodies[i].acceleration) * dt;
@@ -62,11 +62,11 @@ public class StableNBodySimulation : MonoBehaviour
 
     void ComputeAccelerations()
     {
-        // Reset
+        // Reset all accelerations
         foreach (var body in bodies)
             body.acceleration = Vector3.zero;
 
-        // Calcular fuerza por pares (i < j)
+        // Compute pairwise gravitational interactions (i < j)
         for (int i = 0; i < bodies.Length; i++)
         {
             for (int j = i + 1; j < bodies.Length; j++)
@@ -97,7 +97,7 @@ public class StableNBodySimulation : MonoBehaviour
 
         float orbitalSpeed = Mathf.Sqrt(gravitationalConstant * center.mass / distance);
 
-        // Elegimos un eje que NO sea paralelo
+        // Choose an arbitrary axis that is not parallel to the radius vector
         Vector3 arbitraryAxis = Vector3.forward;
 
         if (Vector3.Dot(radiusVector.normalized, arbitraryAxis) > 0.9f)
